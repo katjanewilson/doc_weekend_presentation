@@ -1,0 +1,603 @@
+--- 
+subtitle: Penn Doctoral Weekend Presentation - 2022
+site: bookdown::bookdown_site
+---
+
+
+
+```{r include=FALSE}
+
+#install and load packages
+# install.packages("tidyverse")
+### load libraries
+library(tidyverse)
+library(readr)
+library(tidyverse)
+library(kableExtra)
+library(kableExtra)
+library(knitr)
+library(broom)
+library(viridis)
+
+### bring in raw data
+X2017_2018_SCHOOL_LEVEL_CLASS_SIZE_REPORT <- read_csv("/cloud/project/raw/2017-2018_SCHOOL_LEVEL_CLASS_SIZE_REPORT.csv")
+#take out class size because that doesn't include D75
+X2018_2019_School_Demographic_Snapshot <- read_csv("/cloud/project/raw/2018-2019_School_Demographic_Snapshot.csv")
+X2013_2019_Attendance_Results_School <- read_csv("/cloud/project/raw/2013-2019_Attendance_Results_-_School.csv")
+
+################
+### Step I: Create the full_school data file
+################
+### step 1: from the demographics, get one row per DBN of just the demographics (they stay constant for 2017)
+demos<- X2018_2019_School_Demographic_Snapshot %>%
+  filter(Year == "2017-18") %>%
+  select(DBN, `School Name`, `Total Enrollment`, `Economic Need Index`, '% Male', '% Black', '% White', '% Students with Disabilities', '% Poverty')
+### step 2: merge the Grade + Program Type variables, then spread 
+classes <- X2017_2018_SCHOOL_LEVEL_CLASS_SIZE_REPORT %>%
+  mutate(program_type_grade = paste(`Program Type`, '-', `Grade Level`)) %>%
+  select(DBN, program_type_grade, `Number of Classes`)%>%
+  # mutate(grouped_id = row_number()) %>%
+  spread(program_type_grade, `Number of Classes`)
+#replace NA with 0
+classes[is.na(classes)] <- 0
+#rename columns
+classes <- classes %>%
+  rename(GT1 = "G&T - 1", GT2 = "G&T - 2", GT3 = "G&T - 3",
+         GT4 = "G&T - 4", GT5 = "G&T - 5", GTK = "G&T - K",
+         GE1 = "Gen Ed - 1",  GE2 = "Gen Ed - 2",  GE3 = "Gen Ed - 3", 
+         GE4 = "Gen Ed - 4",  GE5 = "Gen Ed - 5",  GE6 = "Gen Ed - 6", 
+         GE7 = "Gen Ed - 7",  GE8 = "Gen Ed - 8",  GEK = "Gen Ed - K", 
+         ICT1 = "ICT - 1",   ICT2 = "ICT - 2",   ICT3 = "ICT - 3", 
+         ICT4 = "ICT - 4",   ICT5 = "ICT - 5",   ICT6 = "ICT - 6",
+         ICT7 = "ICT - 7",   ICT8 = "ICT - 8",ICTK = "ICT - K",
+         ICTGT1 = "ICT & G&T - 1",  ICTGT2 = `ICT & G&T - 2`,  ICTGT3 = `ICT & G&T - 3`,
+         ICTGT4 = "ICT & G&T - 4",  ICTGT5 = `ICT & G&T - 5`,  ICTGTK = `ICT & G&T - K`,
+         SC121 = "SC 12:1 - K-8 SC", SC1211 = "SC 12:1:1 - K-8 SC", SC151 = "SC 15:1 - K-8 SC", 
+         SC611 = "SC 6:1:1 - K-8 SC", SC811 = "SC 8:1:1 - K-8 SC")
+### step 2A: create a binary indicator of whether middle school, K-8, or K-5
+classes <- classes %>%
+  mutate(middle_levels = ifelse((GE6 | GE7 | GE8 > 1) |(ICT6 | ICT7 | ICT8 > 1) , 1,0),
+         elementary_levels = ifelse((GE1 | GE2 | GE3 |GE4| GE5 >1) | (ICT1 |ICT2|ICT3|ICT4|ICT5 > 1), 1,0),
+         self_contained = ifelse(SC121 | SC1211 | SC151 | SC611 | SC811 > 1, 1,0),
+         gifted = ifelse(GT1 | GT2 | GT3 | GT4 |GT5 |GTK >1, 1,0),
+         self_contained_and_gifted = ifelse(self_contained ==1 & gifted ==1,1,0))
+classes <- classes %>%
+  mutate(school_type = case_when(middle_levels ==1 & elementary_levels ==0 ~ "Middle",
+                                 middle_levels ==0 & elementary_levels ==1 ~ "Elementary",
+                                 middle_levels == 1 & elementary_levels ==1 ~ "K to 8",
+                                 middle_levels ==0 & elementary_levels ==0 ~ "gifted"),
+         class_option = case_when(self_contained ==1 & gifted ==0 ~ "SC",
+                                  self_contained ==1 & gifted ==1 ~ "SC and GT",
+                                  self_contained ==0 & gifted == 0 ~ "no option",
+                                  self_contained == 0 & gifted ==1 ~ "GT"))
+classes <- classes %>%
+  mutate(borough = case_when(str_detect(`DBN`, "X") ~"Bronx",
+                             str_detect(`DBN`, "Q") ~ "Queens",
+                             str_detect(`DBN`, "K") ~"Brooklyn",
+                             str_detect(`DBN`, "M") ~ "Manhattan",
+                             str_detect(`DBN`, "R") ~"Staten Island"))
+## step 3: merge with the demographics
+merged <- merge(demos, classes, by = "DBN") %>%
+  distinct()
+
+### step 4: get attendance
+attendance<- X2013_2019_Attendance_Results_School %>%
+  filter(`Grade` == "All Grades" & `Demographic Variable` == "All Students") %>%
+  select(DBN, '% Attendance', '% Chronically Absent', 'Year') %>%
+  filter(Year == '2017-18')
+### merge with attendance
+merged <- merge(merged, attendance, by = "DBN")
+write.csv(merged, file = "/cloud/project/data/full_school_data.csv")
+rm(list = ls())
+
+```
+
+
+# Overview
+
+Frequently considered metrics when evaluating schools are teacher quality, curriculum choice, and class size. A less considered factor when comparing public schools are class options, such as seperate classes for students with disabilities, or seperate classes for accelerated students. The largest school district in the country, NYC, is a playground of natural variation in these class options. Here, we identify the effect of inclusion (no seperate class option for SWD) on overall school attendance and chronic absenteeism rates. We focus on two findings: first, class options and offerings in schools is more varied than expected, and second, inclusion positively influences overall school attendance and reduces chronic absenteeism.
+
+## Data Overview
+
+### Data cleaning
+
+Using OpenData NYC, we pull aggregate K-8 attendance records and socio-economic variables for all 1125 public schools.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+merged<- read_csv("data/full_school_data.csv")
+head(merged[1:3,c(1:6,8:9)]) %>%
+  kable(caption = "Sample Data Frame",
+        col.names = c("DBN", "School Name", "Total Enrollment",
+                      "ENI", "% Male", "% Black", "%SWD", "% Poverty"))
+```
+
+
+### Raw differences in covariates
+
+Between treatment and control, outcome (attendance and chronic absenteeism) and socio-economic covariates are all statistically different, as assessed by a two sample t test.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+library(tidyverse)
+full_school_data <- read_csv("data/full_school_data.csv")
+### edit the frame
+working_data <- full_school_data %>%
+  rename(TotalEnrollment = `Total Enrollment`,
+         ENI = `Economic Need Index`,
+         PercentBlack = `% Black`,
+         PercentWhite = `% White`,
+         PercentSWD = `% Students with Disabilities`,
+         PercentPoverty = `% Poverty`,
+         AllStudents_CA = `% Chronically Absent`,
+         AllStudents_PA = `% Attendance`) %>%
+  mutate(treatment = ifelse(self_contained ==0, 1,0))%>%
+  select(DBN, `TotalEnrollment`, ENI, PercentBlack, PercentSWD, PercentPoverty, self_contained,
+        AllStudents_CA, AllStudents_PA, treatment, borough, school_type,
+        class_option) %>%
+  na.omit()
+## without matching, t.test is different in all of the covariates.
+school_covariates <- c('ENI', 'PercentBlack', 'PercentSWD', 'PercentPoverty', 'TotalEnrollment')
+with(working_data, t.test(AllStudents_PA ~ self_contained))
+with(working_data, t.test(AllStudents_CA ~ self_contained))
+with(working_data, t.test(ENI ~ self_contained))
+with(working_data, t.test(PercentBlack ~ self_contained))
+with(working_data, t.test(PercentSWD ~ self_contained))
+with(working_data, t.test(PercentPoverty ~ self_contained))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### t tests
+## Attendance is sig different
+working_data %>%
+  group_by(treatment) %>%
+  summarise(mean_attendance = mean(as.numeric(AllStudents_PA)),
+            mean_chronic_absent = mean(as.numeric(AllStudents_CA))) %>%
+  kable(caption = "Outcome Differences by Treatment",
+        col.names= c("Treatment", "Mean Attendance", "Mean Chronic Absenteeism"),
+        digits = c(0,2,2))
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+working_data %>%
+  group_by(treatment) %>%
+  select(one_of(school_covariates)) %>%
+  summarise_all(funs(mean(., na.rm=T)))%>%
+  kable(caption = "Covariate Differences by Treatment",
+        col.names= c("Treatment", "ENI", "Percent Black",
+                     "PercentSWD", "Percent Poverty", "Total Enrollment"),
+        digits = c(0,2,3,2,3, 3))
+
+```
+
+
+### Covariates
+
+Treatment (inclusion) is a significant predictor of absenteeism (CA), without matching. However, five covariates generally associated with higher absenteeism are predictive of both the treatment and the outcome, making them confounders.
+
+$$
+\begin{align}
+ChronicAbsenteeism = \beta_0 +\beta_1Treatment + \beta_2ENI+ 
+\beta_3PercentBlack+\beta_4PercentSWD + \\ \beta_5PercentPoverty +\beta_6PercentPoverty+ BoroughFixedEffects + \epsilon
+\end{align}
+$$
+
+
+```{r echo=FALSE}
+
+## multiple regression
+
+lm(AllStudents_CA ~ treatment + 
+              TotalEnrollment + ENI + PercentBlack +PercentSWD +PercentPoverty +
+              factor(borough), data = working_data) %>%
+  tidy() %>%
+  kable(caption =  "Chronic Absenteeism ~ Treatment + Covariates",
+        col.names = c("Predictor", "B", "SE", "t", "p"),
+        digits = c(0,2,3,2,3))
+```
+
+
+$$
+\begin{align}
+Treatment = \beta_0 +\beta_1TotalEnrollment + \beta_2ENI+ 
+\beta_3PercentBlack+\beta_4PercentSWD + \\ \beta_5PercentPoverty + BoroughFixedEffects + \epsilon
+\end{align}
+$$
+```{r echo=FALSE}
+## Predict treatment
+lm(treatment ~ TotalEnrollment + ENI + PercentBlack +PercentSWD +PercentPoverty + factor(borough), data = working_data) %>%
+  tidy() %>%
+  kable(caption =  "Treatment ~ Covariates",
+        col.names = c("Predictor", "B", "SE", "t", "p"),
+        digits = c(0,2,3,2,3))
+
+
+
+```
+
+
+### Visuals
+
+```{r echo=FALSE, message=FALSE, fig.width = 6, fig.height = 5, warning=FALSE}
+### Likelihood of the class Options by Borough
+
+likelihood_borough<- working_data %>%
+  select(class_option, borough) %>%
+  group_by(borough) %>%
+  mutate(total=n()) %>%
+  group_by(class_option, borough) %>%
+  summarise(n=n(),
+            ratio = n/total) %>%
+  distinct() %>%
+  arrange(borough)
+percent <- function(x, digits = 2, format = "f", ...) {
+  paste0(formatC(100 * x, format = format, digits = digits, ...), "%")
+}
+likelihood_borough$ratio2 <- percent(likelihood_borough$ratio)
+likelihood_borough$treatment <- as.factor(likelihood_borough$class_option)
+
+ggplot(data = likelihood_borough, aes(fill = class_option, y = ratio,
+                            x=borough, label = scales::percent(ratio)))+
+  geom_bar(position = "dodge", stat = "identity")+
+  ggtitle("Likelihood of Class Option by Borough") +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size=11),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white'),
+    axis.text.x = element_text(face = "bold", size = 12)
+  ) +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6)  +
+  scale_y_continuous(labels = scales::percent)+
+  geom_text(size = 3, position=position_dodge(width=1), vjust=-1, hjust = .4)
+
+
+### Likelihood of the Class Options by School Type
+likelihood_school_type <- working_data %>%
+  select(class_option, school_type) %>%
+  filter(school_type != "gifted") %>%
+  group_by(school_type) %>%
+  mutate(total=n()) %>%
+  group_by(class_option, school_type) %>%
+  summarise(n=n(),
+            ratio = n/total) %>%
+  distinct() %>%
+  arrange(school_type)
+
+percent <- function(x, digits = 2, format = "f", ...) {
+  paste0(formatC(100 * x, format = format, digits = digits, ...), "%")
+}
+likelihood_school_type$ratio2 <- percent(likelihood_school_type$ratio)
+likelihood_school_type$treatment <- as.factor(likelihood_school_type$class_option)
+
+ggplot(data = likelihood_school_type, aes(fill = class_option, y = ratio,
+                                      x=school_type, label = scales::percent(ratio)))+
+  geom_bar(position = "dodge", stat = "identity")+
+  ggtitle("Likelihood of Class Options by School Type") +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size=11),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white'),
+    axis.text.x = element_text(face = "bold", size = 12)
+  ) +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6)  +
+  scale_y_continuous(labels = scales::percent)+
+  geom_text(size = 3, position=position_dodge(width=1), vjust=-1, hjust = .4)
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,  fig.width = 10, fig.height = 6}
+p1<- working_data  %>%
+  ggplot(aes(x = borough, y = ENI, fill = as.factor(treatment))) +
+  geom_boxplot() +
+  scale_fill_brewer(palette = "BuPu") +
+  theme(
+    legend.position="none",
+    plot.title = element_text(size=20),
+    axis.title.y = element_blank(),
+    axis.text.x = element_text(face = "bold", size = 9),
+    axis.text.y = element_text(face = "bold", size = 16),
+    panel.background = element_rect(fill = 'white')
+  ) +
+  ggtitle("Economic Need Index") +
+  xlab("")
+p2<-  working_data  %>%
+  ggplot(aes(x = borough, y = PercentPoverty, fill = as.factor(treatment))) +
+  geom_boxplot() +
+  scale_fill_brewer(palette = "BuPu") +
+  theme(
+    legend.position="none",
+    plot.title = element_text(size=20),
+    axis.title.y = element_blank(),
+    axis.text.x = element_text(face = "bold", size = 9),
+    axis.text.y = element_text(face = "bold", size = 16),
+    panel.background = element_rect(fill = 'white')
+  ) +
+  ggtitle("Percent Poverty") +
+  xlab("")
+p3<-  working_data  %>%
+  ggplot(aes(x = borough, y = PercentSWD, fill = as.factor(treatment))) +
+  geom_boxplot() +
+ scale_fill_brewer(palette = "BuPu") +
+  theme(
+    legend.position="none",
+    plot.title = element_text(size=20),
+    axis.title.y = element_blank(),
+    axis.text.x = element_text(face = "bold", size = 9),
+    axis.text.y = element_text(face = "bold", size = 16),
+    panel.background = element_rect(fill = 'white')
+  ) +
+  ggtitle("Percent SWD") +
+  xlab("")
+p4<-  working_data  %>%
+  ggplot(aes(x = borough, y = PercentBlack, fill = as.factor(treatment))) +
+  geom_boxplot() +
+   scale_fill_brewer(palette = "BuPu",  labels = c("self-contained", "inclusion")) +
+  theme(
+    legend.position="right",
+    legend.title = element_blank(),
+    plot.title = element_text(size=20),
+    axis.title.y = element_blank(),
+    axis.text.x = element_text(face = "bold", size = 9),
+    axis.text.y = element_text(face = "bold", size = 16),
+    panel.background = element_rect(fill = 'white')
+  ) +
+  theme(legend.key.size = unit(1.5, 'cm'))+
+  ggtitle("Percent Black") +
+  xlab("")
+library(ggpubr)
+figure <- ggarrange(p1, p2, p3, p4,
+                    ncol = 2, nrow = 2)
+figure
+
+
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width = 10, fig.height = 6}
+### Attendance and Absentee Rates by Borough
+library(formattable)
+att_rates_borough<- working_data %>%
+  select(AllStudents_CA, AllStudents_PA, borough, treatment, school_type) %>%
+  group_by(treatment, borough) %>%
+  summarise(mean_CA = mean(AllStudents_CA),
+            mean_PA = mean(AllStudents_PA)) %>%
+  mutate(mean_CA = mean_CA/100,
+         mean_PA = mean_PA/100)
+att_rates_borough$ratio1 <- percent(att_rates_borough$mean_CA)
+att_rates_borough$ratio2 <- percent(att_rates_borough$mean_PA)
+att_rates_borough$treatment <- as.factor(att_rates_borough$treatment)
+
+p1<- ggplot(data = att_rates_borough, aes(fill = treatment, y = mean_CA,
+                                          x=borough, label = ratio1))+
+  geom_bar(position = "dodge", stat = "identity")+
+  ggtitle("Chronic Absentee Rates by Borough") +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size=11),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white'),
+    axis.text.x = element_text(face = "bold", size = 9)
+  ) +
+  scale_fill_brewer(palette = "BuPu", labels = c("self-contained", "inclusion")) +
+  geom_text(size = 3, position=position_dodge(width=1), vjust=-1, hjust = .4)
+
+p2<- ggplot(data = att_rates_borough, aes(fill = treatment, y = mean_PA,
+                                     x=borough, label = ratio2))+
+  geom_bar(position = "dodge", stat = "identity")+
+  ggtitle("Percent Attendance Rates by Borough") +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size=11),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white'),
+    axis.text.x = element_text(face = "bold", size = 9)
+  ) +
+   scale_fill_brewer(palette = "BuPu", labels = c("self-contained", "inclusion")) +
+  geom_text(size = 3, position=position_dodge(width=1), vjust=-1, hjust = .4) +
+  ylim(0,1.1)
+att_rates_school_type<- working_data %>%
+  select(AllStudents_CA, AllStudents_PA, borough, treatment, school_type) %>%
+  filter(school_type != "gifted") %>%
+  group_by(treatment, school_type) %>%
+  summarise(mean_CA = mean(AllStudents_CA),
+            mean_PA = mean(AllStudents_PA)) %>%
+  mutate(mean_CA = mean_CA/100,
+         mean_PA = mean_PA/100)
+att_rates_school_type$ratio1 <- percent(att_rates_school_type$mean_CA)
+att_rates_school_type$ratio2 <- percent(att_rates_school_type$mean_PA)
+att_rates_school_type$treatment <- as.factor(att_rates_school_type$treatment)
+
+p3<- ggplot(data = att_rates_school_type, aes(fill = treatment, y = ratio1,
+                                          x=school_type, label = ratio1))+
+  geom_bar(position = "dodge", stat = "identity")+
+  ggtitle("Chronic Absentee Rates by School Type") +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size=11),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white'),
+    axis.text.x = element_text(face = "bold", size = 9)
+  ) +
+   scale_fill_brewer(palette = "BuPu", labels = c("self-contained", "inclusion")) +
+  geom_text(size = 3, position=position_dodge(width=1), vjust=-1, hjust = .4)
+
+p4<- ggplot(data = att_rates_school_type, aes(fill = treatment, y = mean_PA,
+                                          x=school_type, label = ratio2))+
+  geom_bar(position = "dodge", stat = "identity")+
+  ggtitle("Percent Attendance Rates by School Type") +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size=11),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white'),
+    axis.text.x = element_text(face = "bold", size = 9)
+  ) +
+  scale_fill_brewer(palette = "BuPu", labels = c("self-contained", "inclusion")) +
+  geom_text(size = 3, position=position_dodge(width=1), vjust=-1, hjust = .4)+
+  ylim(0,1.1)
+
+figure <- ggarrange(p1, p2, p3, p4,
+                    ncol = 2, nrow = 2)
+figure
+
+```
+
+## Matching
+
+We match at a ratio of 3:1, control:treatment groups. The original sample has 885 Control (no inclusion) schools and 240 Treatment (inclusion) schools. The matched sample has 418 Control and 181 Treatment. All covariates cross the acceptable standardized mean difference threshold, and visual diagnostics of the covariate distributions confirm the balance improvement.
+
+### Assess Balance
+
+```{r echo=FALSE, fig.show="hold", fig.width=5, fig.height = 3, message=FALSE, warning=FALSE}
+merged<- read_csv("data/full_school_data.csv")
+#libraries
+library(MatchIt)
+### nearest matching
+merged$treatment <- ifelse(merged$self_contained == 1, 0 , 1)
+merged <- merged %>%
+  rename(TotalEnrollment = `Total Enrollment`,
+         ENI = `Economic Need Index`,
+         PercentBlack = `% Black`,
+         PercentWhite = `% White`,
+         PercentSWD = `% Students with Disabilities`,
+         PercentPoverty = `% Poverty`) %>%
+  select(treatment, `TotalEnrollment`, ENI, PercentBlack, 
+         PercentSWD, PercentPoverty, borough, `% Chronically Absent`, `% Attendance`)
+  
+school_nearest <- matchit(treatment ~ PercentBlack + PercentSWD + PercentPoverty + TotalEnrollment +
+                          ENI, 
+                          family = binomial(),
+                          data = merged,
+                          method = "nearest",
+                           caliper = 0.25,
+                           ratio = 3)
+
+#create the matched set
+nearest_matched <- match.data(school_nearest)
+library(cobalt)
+bal.tab(school_nearest, m.threshold = 0.1)
+bal.plot(school_nearest, var.name = 'TotalEnrollment', which = "both")
+bal.plot(school_nearest, var.name = 'PercentPoverty', which = "both")
+bal.plot(school_nearest, var.name = 'PercentBlack', which = "both")
+bal.plot(school_nearest, var.name = 'PercentSWD', which = "both")
+bal.plot(school_nearest, var.name = 'ENI', which = "both")
+
+```
+
+### Matched Estimates
+
+Matching yields a statistically significant treatment effect for both absenteeism and attendance, improving our confidence in the causal effect of inclusion on overall school attendance rates.
+
+
+$$
+\begin{align}
+ChronicAbsenteeism = \beta_0 +\beta_1Treatment + \epsilon
+\end{align}
+$$
+
+```{r echo=FALSE}
+## estimating treatment effects
+lm(`% Chronically Absent` ~ treatment, data = nearest_matched) %>%
+  tidy() %>%
+  kable(caption =  "Causal Effect using Matched Data",
+        col.names = c("Predictor", "B", "SE", "t", "p"),
+        digits = c(0,2,3,2,3))
+
+```
+
+
+$$
+\begin{align}
+PercentAttendance= \beta_0 +\beta_1Treatment + \epsilon
+\end{align}
+$$
+```{r echo=FALSE}
+## Predict treatment
+lm(`% Attendance` ~ treatment, data = nearest_matched) %>%
+  tidy() %>%
+  kable(caption =  "Causal Effect using Matched Data",
+        col.names = c("Predictor", "B", "SE", "t", "p"),
+        digits = c(0,2,3,2,3))
+
+```
+
+
+## Heterogeneous Treatment Effects
+
+Using only socioeconomic variables in the propensity score model (Percent Black, Percent SWD, Percent Poverty, ENI), and adding Total Enrollment to the outcome model, we explore heterogeneous treatment effects for low-SES schools. Treatment effect of inclusion is strongest for our low-income, high-minority schools. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+school_subclass <- matchit(treatment ~ PercentBlack + PercentSWD + PercentPoverty + ENI,
+                          family = binomial(),
+                          data = merged,
+                          method = "subclass",
+                          subclass=5,
+                           caliper = 0.25,
+                           ratio = 3
+)
+
+wd_nomiss2 <- data.frame(cbind(merged, match.data(school_subclass)[,c("distance", "subclass")]))                
+head(wd_nomiss2)
+
+## check out subclasses
+wd_nomiss2$subclass <- as.factor(wd_nomiss2$subclass)
+wd_nomiss2 %>%
+  group_by(subclass, treatment) %>%
+  summarise(mean_distance = mean(distance),
+            mean_black = mean(PercentBlack))
+## so, all students in subclass 3 have similar propensity scores, etc.
+table(wd_nomiss2$self_contained_binary)
+dat <- wd_nomiss2[,c("distance", "treatment", "subclass")]
+dat$Observations <- rep("NoSC", length(wd_nomiss2$treatment))
+dat$Observations[dat$treatment == 0] <- "SC"
+dat$ymax <- 1
+quant <- quantile(wd_nomiss2$distance, probs = seq(0,1,1/5))
+q <- data.frame(id = names(quant), values = unname(quant), stringsAsFactors = FALSE)
+pp <- ggplot(data = dat, aes(x = distance, group = Observations))
+pp + geom_density(aes(x = distance, linetype = Observations), size = 0.75, data = dat)+
+  xlab("Propensity Score Logit") +
+  ylab("Density") +
+  geom_vline(xintercept = quant[(2:5)], linetype = "dashed") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+
+##estimate the ATE
+
+mod_out_sub <- lm(X..Chronically.Absent ~ treatment +factor(subclass) + factor(subclass) *treatment -1 + TotalEnrollment, 
+                  data = wd_nomiss2)
+summary(mod_out_sub)
+```
+
+
+## References
+
+
+
+
+
+

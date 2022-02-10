@@ -1,9 +1,26 @@
 --- 
-title: "YOUR TITLE HERE"
-author: "YOUR NAME HERE"
+title: 'The Influence of Inclusion on Attendance: A Matched Comparison Study of NYC
+  Public Schools'
+author: "Katherine Wilson, Jess Huang, Wendy Chan, Michael Gottfried"
 date: "`r Sys.Date()`"
+subtitle: Penn Doctoral Weekend Presentation - 2022
 site: bookdown::bookdown_site
 ---
 
-# Down the rabbit-hole
 
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Background and Introduction
+
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('image.png')
+```
+
+As researchers begin to understand more of what makes a single classroom effective, many are moving to a new question: what makes an entire school effective? One school level factor of interest are class options: that is, the method that students are arranged by ability level. Here, we focus on the organization of special education students. In New York City public schools, some schools have a self-contained option for students with special needs. In these schools, students with disabilities (SWD) are educated in a seperate classroom, away from their general education peers. Other schools have no self-contained option, where SWD are educated along with their gen-ed peers, with necessary support. In this study, we explore whether such a visible, detached, class option might affect attendance rates both for students with special needs and for those without. We find that when students with disabilities learn alongside students without disabilities, chronic absenteeism for all students decreases, and theorize that the effect is due to all students in the school feel a greater sense of belonging or conenction with the school. Using rigorous causal inference methods with a nuanced treatment of the propenstiy score to identify heterogeneous treatment effects among low income schools, we match 1,200 NYC public schools on key covariates to identify the effect of inclusion on school attendasnce.
+
+The research invites us to think more broadly about the effects of class options on school culture. Other class options, such as the gifted-and-talented option, might also reasonably affect attendance and academic measures for students both in and not in the class option. We discuss future implications of this research, namely how class-options research might inform the gifted and talented debate.
