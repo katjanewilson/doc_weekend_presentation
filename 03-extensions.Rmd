@@ -1,2 +1,132 @@
 # Extensions - Class options
 
+
+--- 
+subtitle: Penn Doctoral Weekend Presentation - 2022
+site: bookdown::bookdown_site
+---
+
+### Overview of Gifted Options
+
+Description here of the data... 
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(ggplot2)
+library(ggmap)
+```
+
+
+
+### geoSpatial Mapping of Class Options
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+X2019_2020_School_Point_Locations <- read_csv("raw/2019_-_2020_School_Point_Locations.csv")
+
+### using the first column to identify school locations 
+head(X2019_2020_School_Point_Locations)
+```
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#filter out schools with GT option
+merged <- read_csv("/cloud/project/data/merged (1).csv")
+head(merged)
+nrow(merged)
+merged_gf <- merged %>% filter(gifted == 1)
+head(merged_gf)
+```
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(dplyr)
+merged_combined <- na.omit(X2019_2020_School_Point_Locations %>% 
+                         left_join(merged, by = c("Loc_Name"= "School Name")) %>%
+                         select(c("the_geom","Loc_Name","DBN","borough","Economic Need Index", "% Students with Disabilities")))
+head(merged_combined)
+
+gf_combined <- na.omit(X2019_2020_School_Point_Locations %>% 
+                         left_join(merged_gf, by = c("Loc_Name"= "School Name")) %>%
+                         select(c("the_geom","Loc_Name","DBN","borough","Economic Need Index")))
+
+head(gf_combined)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#change the_geom to separate columns of long and lat data
+x <- str_extract(gf_combined$the_geom,"(?<=\\().*(?=\\))")
+x <- unlist(strsplit(x," "))
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Extract long+lat data
+odd <- seq(1,201,2)
+even <- seq(2,202,2)
+long <- c()
+lat <- c()
+
+for (i in 1:101){
+  long[i] <- x[odd[i]]
+  lat[i] <- x[even[i]]
+}
+gf_combined$long <- as.numeric(long)
+gf_combined$lat <- as.numeric(lat)
+gf_combined
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#change the_geom to separate columns of long and lat data
+y <- str_extract(merged_combined$the_geom,"(?<=\\().*(?=\\))")
+y <- unlist(strsplit(y," "))
+
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Extract long+lat data
+odd <- seq(1,2205,2)
+even <- seq(2,2206,2)
+long <- c()
+lat <- c()
+
+for (i in 1:1105){
+  long[i] <- y[odd[i]]
+  lat[i] <- y[even[i]]
+}
+merged_combined$long <- as.numeric(long)
+merged_combined$lat <- as.numeric(lat)
+merged_combined
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+merged_plot <- merged_combined %>% mutate(across(where(is.numeric), ~ round(., 3))) %>% select("Economic Need Index",long,lat)
+names(merged_plot)[1] <- "ENI"
+merged_plot$ENI <- merged_plot$ENI*100
+merged_plot <- na.omit(merged_plot)
+merged_plot
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+nyc.map <- get_map(location = "New York City", zoom = 10, maptype = "roadmap")
+ggmap(nyc.map, extend = "device") +
+  stat_summary_2d(data = merged_plot,aes(x = long, y = lat, z = ENI),alpha = 0.6)+
+  scale_fill_gradient(name = "ENI", low = "green", high = "red")+
+  geom_point(aes(x=long,y=lat,color=borough),data = gf_combined,size=0.7)
+```
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+head(merged_combined)
+merged_plot <- merged_combined %>% mutate(across(where(is.numeric), ~ round(., 3))) %>% select("% Students with Disabilities",long,lat)
+names(merged_plot)[1] <- "Dis"
+merged_plot$Dis <- merged_plot$Dis*100
+merged_plot <- na.omit(merged_plot)
+merged_plot
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+nyc.map <- get_map(location = "New York City", zoom = 10, maptype = "roadmap")
+ggmap(nyc.map, extend = "device") +
+  stat_summary_2d(data = merged_plot,aes(x = long, y = lat, z = Dis),alpha = 0.6)+
+  scale_fill_gradient(name = "% Dis", low = "green", high = "red")+
+  geom_point(aes(x=long,y=lat,color=borough),data = gf_combined,size=0.7)
+```
+
+
+

@@ -26,3 +26,13 @@ matching
 background-and-introduction
 study
 extensions---class-options
+import-the-latitude-data
+tab:unnamed-chunk-3
+tab:unnamed-chunk-8
+tab:unnamed-chunk-14
+overview-of-gifted-options
+geospatial-mapping-of-class-options
+extensions---class-options-1
+overview-of-gifted-options-1
+questionscomments
+emails
