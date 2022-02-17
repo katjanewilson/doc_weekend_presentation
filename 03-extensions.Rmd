@@ -8,7 +8,12 @@ site: bookdown::bookdown_site
 
 ### Overview of Gifted Options
 
-Description here of the data... 
+|District-Wide Programs|City-Wide Programs|
+|---|----|----|
+|Qualifications (K-3)|Score 90 or higher (95+ for admission)|Score 97+ (99+ for admission)|
+|Classroom format|Mixed (G&T + GenEd)|All classrooms for G&T|
+|Boroughs w/ programs|All 5 boroughs|No school in Bronx & Staten Island|
+|Student home location|Students living in the district have high priority|All parts of the city|
 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -19,6 +24,8 @@ library(ggmap)
 
 
 ### geoSpatial Mapping of Class Options
+
+Each school's Economic Need Index (ENI) is the average of students' Economic Need Values. ENI measures estimates the percentages of students facing economic hardship.
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 library(tidyverse)
