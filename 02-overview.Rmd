@@ -95,7 +95,7 @@ rm(list = ls())
 
 # Overview
 
-Frequently considered metrics when evaluating schools are teacher quality, curriculum choice, and class size. A less considered factor when comparing public schools are class options, such as seperate classes for students with disabilities, or seperate classes for accelerated students. The largest school district in the country, NYC, is a playground of natural variation in these class options. Here, we identify the effect of inclusion (no seperate class option for SWD) on overall school attendance and chronic absenteeism rates. We focus on two findings: first, class options and offerings in schools is more varied than expected, and second, inclusion positively influences overall school attendance and reduces chronic absenteeism.
+We focus on two findings: first, class options and offerings in schools is more varied than expected, and second, inclusion positively influences overall school attendance and reduces chronic absenteeism.
 
 ## Data Overview
 

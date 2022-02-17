@@ -36,3 +36,7 @@ extensions---class-options-1
 overview-of-gifted-options-1
 questionscomments
 emails
+background
+introduction
+abstract
+motivation

@@ -1,0 +1,14 @@
+--- 
+subtitle: Penn Doctoral Weekend Presentation - 2022
+site: bookdown::bookdown_site
+---
+
+
+# Motivation
+
+
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('image.png')
+```
+
+
