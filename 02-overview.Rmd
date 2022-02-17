@@ -360,12 +360,6 @@ figure <- ggarrange(p1, p2, p3, p4,
 figure
 
 
-```
-
-
-
-
-```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width = 10, fig.height = 6}
 ### Attendance and Absentee Rates by Borough
 library(formattable)
 att_rates_borough<- working_data %>%
@@ -463,6 +457,109 @@ p4<- ggplot(data = att_rates_school_type, aes(fill = treatment, y = mean_PA,
 figure <- ggarrange(p1, p2, p3, p4,
                     ncol = 2, nrow = 2)
 figure
+
+```
+
+
+
+
+```{r eval=FALSE, fig.height=4, fig.width=10, message=FALSE, warning=FALSE, include=FALSE}
+### Attendance and Absentee Rates by Borough
+library(formattable)
+att_rates_borough<- working_data %>%
+  select(AllStudents_CA, AllStudents_PA, borough, treatment, school_type) %>%
+  group_by(treatment, borough) %>%
+  summarise(mean_CA = mean(AllStudents_CA),
+            mean_PA = mean(AllStudents_PA)) %>%
+  mutate(mean_CA = mean_CA/100,
+         mean_PA = mean_PA/100)
+att_rates_borough$ratio1 <- percent(att_rates_borough$mean_CA)
+att_rates_borough$ratio2 <- percent(att_rates_borough$mean_PA)
+att_rates_borough$treatment <- as.factor(att_rates_borough$treatment)
+
+p1<- ggplot(data = att_rates_borough, aes(fill = treatment, y = mean_CA,
+                                          x=borough, label = ratio1))+
+  geom_bar(position = "dodge", stat = "identity")+
+  ggtitle("Chronic Absentee Rates by Borough") +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size=11),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white'),
+    axis.text.x = element_text(face = "bold", size = 9)
+  ) +
+  scale_fill_brewer(palette = "BuPu", labels = c("self-contained", "inclusion")) +
+  geom_text(size = 3, position=position_dodge(width=1), vjust=-1, hjust = .4)
+
+p2<- ggplot(data = att_rates_borough, aes(fill = treatment, y = mean_PA,
+                                     x=borough, label = ratio2))+
+  geom_bar(position = "dodge", stat = "identity")+
+  ggtitle("Percent Attendance Rates by Borough") +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size=11),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white'),
+    axis.text.x = element_text(face = "bold", size = 9)
+  ) +
+   scale_fill_brewer(palette = "BuPu", labels = c("self-contained", "inclusion")) +
+  geom_text(size = 3, position=position_dodge(width=1), vjust=-1, hjust = .4) +
+  ylim(0,1.1)
+att_rates_school_type<- working_data %>%
+  select(AllStudents_CA, AllStudents_PA, borough, treatment, school_type) %>%
+  filter(school_type != "gifted") %>%
+  group_by(treatment, school_type) %>%
+  summarise(mean_CA = mean(AllStudents_CA),
+            mean_PA = mean(AllStudents_PA)) %>%
+  mutate(mean_CA = mean_CA/100,
+         mean_PA = mean_PA/100)
+att_rates_school_type$ratio1 <- percent(att_rates_school_type$mean_CA)
+att_rates_school_type$ratio2 <- percent(att_rates_school_type$mean_PA)
+att_rates_school_type$treatment <- as.factor(att_rates_school_type$treatment)
+
+p3<- ggplot(data = att_rates_school_type, aes(fill = treatment, y = ratio1,
+                                          x=school_type, label = ratio1))+
+  geom_bar(position = "dodge", stat = "identity")+
+  ggtitle("Chronic Absentee Rates by School Type") +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size=11),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white'),
+    axis.text.x = element_text(face = "bold", size = 9)
+  ) +
+   scale_fill_brewer(palette = "BuPu", labels = c("self-contained", "inclusion")) +
+  geom_text(size = 3, position=position_dodge(width=1), vjust=-1, hjust = .4)
+
+p4<- ggplot(data = att_rates_school_type, aes(fill = treatment, y = mean_PA,
+                                          x=school_type, label = ratio2))+
+  geom_bar(position = "dodge", stat = "identity")+
+  ggtitle("Percent Attendance Rates by School Type") +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size=11),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white'),
+    axis.text.x = element_text(face = "bold", size = 9)
+  ) +
+  scale_fill_brewer(palette = "BuPu", labels = c("self-contained", "inclusion")) +
+  geom_text(size = 3, position=position_dodge(width=1), vjust=-1, hjust = .4)+
+  ylim(0,1.1)
+
+fig1<- p1
+ggsave("fig1.png")
 
 ```
 

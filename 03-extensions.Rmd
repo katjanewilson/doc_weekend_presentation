@@ -128,8 +128,8 @@ merged_plot <- na.omit(merged_plot)
 merged_plot
 ```
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-nyc.map <- get_map(location = "New York City", zoom = 10, maptype = "roadmap")
-ggmap(nyc.map, extend = "device") +
+nyc.map2 <- get_map(location = "New York City", zoom = 10, maptype = "roadmap")
+ggmap(nyc.map2, extend = "device") +
   stat_summary_2d(data = merged_plot,aes(x = long, y = lat, z = Dis),alpha = 0.6)+
   scale_fill_gradient(name = "% Dis", low = "green", high = "red")+
   geom_point(aes(x=long,y=lat,color=borough),data = gf_combined,size=0.7)
