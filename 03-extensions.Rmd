@@ -8,7 +8,7 @@ site: bookdown::bookdown_site
 
 ### Overview of Gifted Options
 
-|District-Wide Programs|City-Wide Programs|
+||District-Wide Programs|City-Wide Programs|
 |---|----|----|
 |Qualifications (K-3)|Score 90 or higher (95+ for admission)|Score 97+ (99+ for admission)|
 |Classroom format|Mixed (G&T + GenEd)|All classrooms for G&T|
@@ -25,7 +25,6 @@ library(ggmap)
 
 ### geoSpatial Mapping of Class Options
 
-Each school's Economic Need Index (ENI) is the average of students' Economic Need Values. ENI measures estimates the percentages of students facing economic hardship.
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 library(tidyverse)
@@ -103,6 +102,21 @@ merged_combined$lat <- as.numeric(lat)
 merged_combined
 ```
 
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+merged_plot <- merged_combined %>% mutate(across(where(is.numeric), ~ round(., 3))) %>% select("Economic Need Index",long,lat)
+names(merged_plot)[1] <- "ENI"
+merged_plot$ENI <- merged_plot$ENI*100
+merged_plot <- na.omit(merged_plot)
+merged_plot
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+nyc.map <- get_map(location = "New York City", zoom = 10, maptype = "roadmap")
+ggmap(nyc.map, extend = "device") +
+  geom_point(aes(x=long,y=lat,color=borough),data = gf_combined,size=0.7)
+```
+
+
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 merged_plot <- merged_combined %>% mutate(across(where(is.numeric), ~ round(., 3))) %>% select("Economic Need Index",long,lat)
 names(merged_plot)[1] <- "ENI"
@@ -126,7 +140,15 @@ names(merged_plot)[1] <- "Dis"
 merged_plot$Dis <- merged_plot$Dis*100
 merged_plot <- na.omit(merged_plot)
 merged_plot
+
+nyc.map2 <- get_map(location = "New York City", zoom = 10, maptype = "roadmap")
+ggmap(nyc.map2, extend = "device") +
+  stat_summary_2d(data = merged_plot,aes(x = long, y = lat, z = Dis),alpha = 0.6)+
+  scale_fill_gradient(name = "% Dis", low = "green", high = "red")+
+  geom_point(aes(x=long,y=lat,color=borough),data = gf_combined,size=0.7)
 ```
+
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 nyc.map2 <- get_map(location = "New York City", zoom = 10, maptype = "roadmap")
 ggmap(nyc.map2, extend = "device") +
