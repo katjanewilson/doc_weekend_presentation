@@ -183,6 +183,7 @@ ChronicAbsenteeism = \beta_0 +\beta_1Treatment + \beta_2ENI+
 $$
 
 
+
 ```{r echo=FALSE}
 
 ## multiple regression
@@ -195,7 +196,6 @@ lm(AllStudents_CA ~ treatment +
         col.names = c("Predictor", "B", "SE", "t", "p"),
         digits = c(0,2,3,2,3))
 ```
-
 
 $$
 \begin{align}
@@ -616,7 +616,7 @@ ChronicAbsenteeism = \beta_0 +\beta_1Treatment + \epsilon
 \end{align}
 $$
 
-```{r echo=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 ## estimating treatment effects
 lm(`% Chronically Absent` ~ treatment, data = nearest_matched) %>%
   tidy() %>%
@@ -632,7 +632,7 @@ $$
 PercentAttendance= \beta_0 +\beta_1Treatment + \epsilon
 \end{align}
 $$
-```{r echo=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 ## Predict treatment
 lm(`% Attendance` ~ treatment, data = nearest_matched) %>%
   tidy() %>%

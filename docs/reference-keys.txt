@@ -41,3 +41,14 @@ introduction
 abstract
 motivation
 research-question
+tab:unnamed-chunk-10
+tab:unnamed-chunk-11
+fe
+data-cleaning-1
+covariates-1
+matching-1
+assess-balance-1
+matched-estimates-1
+within-borough-matching
+assess-balance-2
+match-on-boroughs
